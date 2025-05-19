@@ -17,8 +17,8 @@ renameMatches id n (Match ii eqs)
 renameEqs :: Id -> String -> [(Id, String, [Pat], Exp)] -> [(Id, String, [Pat], Exp)]
 renameEqs id n [] = [] 
 renameEqs id na ((i, n2, pats, e):rest)
-  | id == i = (i, na, pats, renameExp id na e):rest
-  | otherwise = (i, n2, pats, renameExp id na e):rest
+  | id == i = (i, na, pats, renameExp id na e):renameEqs id na rest 
+  | otherwise = (i, n2, pats, renameExp id na e):renameEqs id na rest
 
 renameExp :: Id -> String -> Exp -> Exp 
 renameExp id na (Var id2 na2)

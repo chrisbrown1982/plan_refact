@@ -26,7 +26,7 @@ pprintE :: Exp -> String
 pprintE (Lit _ i) = show i 
 pprintE (Var _ s) = s 
 pprintE (Plus _ e1 e2) = "(" ++ pprintE e1 ++ " + " ++ pprintE e2 ++ ")"
-pprintE (App _ e1 e2) = pprintE e1 ++ " " ++ pprintE e2
+pprintE (App _ e1 e2) = "(" ++ pprintE e1 ++ " " ++ pprintE e2 ++ ")"
 pprintE (Enum _ s e) = "[" ++ (show s) ++ ".." ++ (show e) ++ "]"
 
 pprintD :: (Decl) -> String 
@@ -35,7 +35,7 @@ pprintD (Match _ matches) = pprintMatches matches
 
 pprintMatches :: [(Id, String, [Pat], Exp)] -> String 
 pprintMatches [] = ""
-pprintMatches ((_, n, pats, e):rest) = n ++ " " ++ (concat(map pprintPat pats)) ++ " = " ++ pprintE e ++ "\n"
+pprintMatches ((_, n, pats, e):rest) = n ++ " " ++ (concat(map pprintPat pats)) ++ " = " ++ pprintE e ++ "\n" ++ pprintMatches rest
 
 pprintPat :: Pat -> String 
 pprintPat (Nil _) = "[]"
@@ -60,3 +60,5 @@ example2 = Prog 1 decs
   decs = [(2, dec), (9, dec2)]
   dec  = Match 3 [(4, "f", [PVar 5 "x"], Plus 6 (Var 7 "y") (Lit 8 1))]
   dec2 = Match 10 [(11, "g", [PVar 12 "x"], App 13 (Var 4 "f") (Lit 14 42))]
+
+

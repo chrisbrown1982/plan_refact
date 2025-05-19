@@ -23,9 +23,13 @@ generaliseMatch  id2 n (Match id matches) =
 generaliseEq :: Id -> String ->  [(Id, String, [Pat], Exp)] -> ([(Id, String, [Pat], Exp)], Maybe Exp)
 generaliseEq _ _  [] = ([], Nothing)
 generaliseEq id2 n2 ((id, n, pats, e):rest)
-   | inE id2 e  = let (res, e') = generaliseE id2 n2 e in ((id, n, PVar 99 n2:pats, res) :rest, Just e')
+   | inE id2 e  = let (res, e') = generaliseE id2 n2 e in ((id, n, PVar 99 n2:pats, res) :(modP (PVar 99 n2) rest), Just e')
    | otherwise = case generaliseEq id2 n2 rest of 
                    (rest', res) -> ((id, n, pats, e) : rest', res)
+
+modP :: Pat -> [(Id, String, [Pat], Exp)] -> [(Id, String, [Pat], Exp)]
+modP p [] = [] 
+modP p ((id, n, pats, e):rest) = (id, n, p:pats,e ): modP p rest 
 
 inE :: Id -> Exp -> Bool
 inE id (Lit id2 i) = id == id2
@@ -38,7 +42,7 @@ generaliseE :: Id -> String -> Exp -> (Exp, Exp)
 generaliseE id n e@(Lit id2 i)
    | id == id2 = (Var id2 n, e)
 generaliseE id n v@(Var id2 v2)
-   | id == id2 = (v, v) -- this makes no sense
+   | id == id2 = (Var id2 n, v) -- this makes no sense
 generaliseE id n e@(Plus id2 e1 e2)
    | id == id2 = (Var id2 n, e)
    | inE id e1 = case generaliseE id n e1 of 
@@ -75,8 +79,10 @@ changeCallsExp :: Id -> Exp -> Exp -> Exp
 changeCallsExp fun_id e a@(App id (Var id2 e1) e2) 
   | fun_id == id2 = App id (App 99 (Var id2 e1 ) e) e2 
   | otherwise = App id (Var id2 e1) (changeCallsExp fun_id e e2)
+changeCallsExp fun_id e a@(App id e1 e2) = App id (changeCallsExp fun_id e e1) (changeCallsExp fun_id e e2)
 changeCallsExp fun_id e a@(Lit id i) = a 
 changeCallsExp fun_id e a@(Var id s) = a 
 changeCallsExp fun_id e (Plus id e1 e2) = Plus id (changeCallsExp fun_id e e1) (changeCallsExp fun_id e e2)
 changeCallsExp fun_id e a@(Enum id i1 i2) = a
+changeCallsExp _ _ e = error $ show e 
 
