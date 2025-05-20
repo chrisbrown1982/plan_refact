@@ -37,6 +37,13 @@ inE id (Var id2 s) = id == id2
 inE id (Plus id2 e1 e2) = (id2 == id) || inE id e1 || inE id e2
 inE id (App id2 e1 e2) = (id2 == id) || inE id e1 || inE id e2
 inE id (Enum id2 s e) = id == id2
+inE id (Case m alts) = inAlts id alts
+
+inAlts :: Id -> [(Pat, Exp)] -> Bool
+inAlts id [] = False 
+inAlts id ((p, e):rest) 
+  | inE id e = True 
+  | otherwise = inAlts id rest 
 
 generaliseE :: Id -> String -> Exp -> (Exp, Exp) 
 generaliseE id n e@(Lit id2 i)
@@ -57,7 +64,19 @@ generaliseE id n e@(App id2 e1 e2)
                   (e2', e') -> (App id2 e1 e2', e')
 generaliseE id n e@(Enum id2 s e')
    | id == id2 = (Var id2 n, e)
+generaliseE id n e@(Case m alts)
+   | inAlts id alts 
+       = case generaliseCase id n alts of
+           (alts', e') -> (Case m alts', e')
 generaliseE _ _ e = (e, e)
+
+generaliseCase :: Id -> String -> [(Pat, Exp)] -> ([(Pat, Exp)], Exp)
+generaliseCase id n [] = error "error in generalisation"
+generaliseCase id n ((p,e):rest)
+  | inE id e = case generaliseE id n e of 
+                  (e', e'') -> ((p, e'):rest, e'')
+  | otherwise = case generaliseCase id n rest of 
+                  (rest', e') -> ((p,e):rest', e')
 
 ----
 
@@ -84,5 +103,11 @@ changeCallsExp fun_id e a@(Lit id i) = a
 changeCallsExp fun_id e a@(Var id s) = a 
 changeCallsExp fun_id e (Plus id e1 e2) = Plus id (changeCallsExp fun_id e e1) (changeCallsExp fun_id e e2)
 changeCallsExp fun_id e a@(Enum id i1 i2) = a
+changeCallsExp fun_id e a@(Case m alts) =
+     Case (changeCallsExp fun_id e m) (changeCallsAlts fun_id e alts)
 changeCallsExp _ _ e = error $ show e 
 
+changeCallsAlts :: Id -> Exp -> [(Pat, Exp)] -> [(Pat, Exp)]
+changeCallsAlts _ _ [] = []
+changeCallsAlts fun_id e ((p,e1):rest)
+  = (p, changeCallsExp fun_id e e1):changeCallsAlts fun_id e rest

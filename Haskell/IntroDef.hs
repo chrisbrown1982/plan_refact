@@ -34,6 +34,14 @@ inE id (Var id2 s) = id == id2
 inE id (Plus id2 e1 e2) = (id2 == id) || inE id e1 || inE id e2
 inE id (App id2 e1 e2) = (id2 == id) || inE id e1 || inE id e2
 inE id (Enum id2 s e) = id == id2
+inE id (Case m alts) = inAlts id alts
+
+inAlts :: Id -> [(Pat, Exp)] -> Bool
+inAlts id [] = False 
+inAlts id ((p, e):rest) 
+  | inE id e = True 
+  | otherwise = inAlts id rest 
+
 
 introE :: Id -> String -> Exp -> (Exp, Maybe (Id, Decl))
 introE id n e@(Lit id2 i)

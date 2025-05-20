@@ -8,6 +8,7 @@ data Exp =
    | Plus Id Exp Exp 
    | App Id Exp Exp 
    | Enum Id Int Int 
+   | Case Exp [(Pat, Exp)]
   deriving Show 
 
 data Decl = 
@@ -28,6 +29,12 @@ pprintE (Var _ s) = s
 pprintE (Plus _ e1 e2) = "(" ++ pprintE e1 ++ " + " ++ pprintE e2 ++ ")"
 pprintE (App _ e1 e2) = "(" ++ pprintE e1 ++ " " ++ pprintE e2 ++ ")"
 pprintE (Enum _ s e) = "[" ++ (show s) ++ ".." ++ (show e) ++ "]"
+pprintE (Case m alts) = "case " ++ pprintE m++ " of \n" ++ pprintAlts alts
+
+pprintAlts :: [(Pat, Exp)] -> String 
+pprintAlts [] = ""
+pprintAlts ((p, e):rest)
+  = "\t" ++ pprintPat p ++ " -> " ++ pprintE e ++ "\n" ++ pprintAlts rest
 
 pprintD :: (Decl) -> String 
 pprintD (Match _ []) = ""

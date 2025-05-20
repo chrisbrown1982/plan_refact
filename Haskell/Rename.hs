@@ -26,4 +26,10 @@ renameExp id na (Var id2 na2)
  | otherwise = Var id2 na2 
 renameExp id na (Plus id2 e1 e2) = Plus id2 (renameExp id na e1) (renameExp id na e2)
 renameExp id na (App id2 e1 e2) = App id2 (renameExp id na e1) (renameExp id na e2)
+renameExp id na (Case e1 alts) = Case (renameExp id na e1) (renameAlts id na alts)
 renameExp id na e = e 
+
+renameAlts :: Id -> String -> [(Pat, Exp)] -> [(Pat, Exp)]
+renameAlts _ _ [] = []
+renameAlts id na ((p,e):rest) 
+ = (p, renameExp id na e):renameAlts id na rest
