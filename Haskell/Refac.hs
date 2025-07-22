@@ -3,28 +3,30 @@ module Refac where
 import Lang
 
 generalise :: Prog -> Id -> Id -> String -> (Prog, Maybe Exp)
-generalise (Prog id decs) fun_id id2 n = 
-   case generaliseDecs id2 n decs of 
-      (decs', Just res) -> (Prog id (changeCalls fun_id res decs'), Just res)
+generalise p@(Prog id decs) fun_id id2 n = 
+   case generaliseDecs un id2 n decs of 
+      (decs', Just res) -> (Prog id (changeCalls (uniqueIDProg (Prog id decs')) fun_id res decs'), Just res)
       (_, Nothing) -> error "something went wrong"
+ where
+   un = uniqueIDProg p 
 
-generaliseDecs :: Id -> String -> [(Id, Decl)] -> ([(Id, Decl)], Maybe Exp)
-generaliseDecs  id n [] = ([], Nothing)
-generaliseDecs  id2 n ((id, dec):rest) =
-   case generaliseMatch id2 n dec of  -- should just do first occurrence?
-      (match', res) -> case generaliseDecs id2 n rest of 
+generaliseDecs :: Id -> Id -> String -> [(Id, Decl)] -> ([(Id, Decl)], Maybe Exp)
+generaliseDecs un id n [] = ([], Nothing)
+generaliseDecs un id2 n ((id, dec):rest) =
+   case generaliseMatch un id2 n dec of  -- should just do first occurrence?
+      (match', res) -> case generaliseDecs un id2 n rest of 
                          (rest', _) -> ((id, match') : rest', res) 
 
-generaliseMatch :: Id -> String -> Decl -> (Decl, Maybe Exp)
-generaliseMatch  id2 n (Match id matches) =
-     case generaliseEq id2 n matches of 
+generaliseMatch :: Id -> Id -> String -> Decl -> (Decl, Maybe Exp)
+generaliseMatch  un id2 n (Match id matches) =
+     case generaliseEq un id2 n matches of 
         (matches', res) -> (Match id matches', res)
 
-generaliseEq :: Id -> String ->  [(Id, String, [Pat], Exp)] -> ([(Id, String, [Pat], Exp)], Maybe Exp)
-generaliseEq _ _  [] = ([], Nothing)
-generaliseEq id2 n2 ((id, n, pats, e):rest)
-   | inE id2 e  = let (res, e') = generaliseE id2 n2 e in ((id, n, PVar 99 n2:pats, res) :(modP (PVar 99 n2) rest), Just e')
-   | otherwise = case generaliseEq id2 n2 rest of 
+generaliseEq :: Id -> Id -> String ->  [(Id, String, [Pat], Exp)] -> ([(Id, String, [Pat], Exp)], Maybe Exp)
+generaliseEq _ _ _  [] = ([], Nothing)
+generaliseEq un id2 n2 ((id, n, pats, e):rest)
+   | inE id2 e  = let (res, e') = generaliseE id2 n2 e in ((id, n, PVar un n2:pats, res) : (modP (PVar (un+1) n2) rest), Just e')
+   | otherwise = case generaliseEq (un+2) id2 n2 rest of 
                    (rest', res) -> ((id, n, pats, e) : rest', res)
 
 modP :: Pat -> [(Id, String, [Pat], Exp)] -> [(Id, String, [Pat], Exp)]
@@ -80,34 +82,34 @@ generaliseCase id n ((p,e):rest)
 
 ----
 
-changeCalls :: Id -> Exp -> [(Id, Decl)] -> [(Id, Decl)]
-changeCalls fun_id e [] = [] 
-changeCalls fun_id e ((id,dec):decs) 
-  = (id, changeCallsDecls fun_id e dec) : changeCalls fun_id e decs 
+changeCalls :: Id -> Id -> Exp -> [(Id, Decl)] -> [(Id, Decl)]
+changeCalls un fun_id e [] = [] 
+changeCalls un fun_id e ((id,dec):decs) 
+  = (id, changeCallsDecls un fun_id e dec) : changeCalls un fun_id e decs 
 
-changeCallsDecls :: Id -> Exp -> Decl -> Decl 
-changeCallsDecls fun_id e (Match id matches) 
-  = Match id (changeCallsMatch fun_id e matches)
+changeCallsDecls :: Id -> Id -> Exp -> Decl -> Decl 
+changeCallsDecls un fun_id e (Match id matches) 
+  = Match id (changeCallsMatch un fun_id e matches)
 
-changeCallsMatch :: Id -> Exp -> [(Id, String, [Pat], Exp)] -> [(Id, String, [Pat], Exp)] 
-changeCallsMatch fun_id e [] = []
-changeCallsMatch fun_id e ((id, name, pats, e2):rest) 
-  = (id, name, pats, changeCallsExp fun_id e e2):changeCallsMatch fun_id e rest 
+changeCallsMatch :: Id -> Id -> Exp -> [(Id, String, [Pat], Exp)] -> [(Id, String, [Pat], Exp)] 
+changeCallsMatch _ fun_id e [] = []
+changeCallsMatch un fun_id e ((id, name, pats, e2):rest) 
+  = (id, name, pats, changeCallsExp un fun_id e e2):changeCallsMatch un fun_id e rest 
 
-changeCallsExp :: Id -> Exp -> Exp -> Exp 
-changeCallsExp fun_id e a@(App id (Var id2 e1) e2) 
-  | fun_id == id2 = App id (App 99 (Var id2 e1 ) e) e2 
-  | otherwise = App id (Var id2 e1) (changeCallsExp fun_id e e2)
-changeCallsExp fun_id e a@(App id e1 e2) = App id (changeCallsExp fun_id e e1) (changeCallsExp fun_id e e2)
-changeCallsExp fun_id e a@(Lit id i) = a 
-changeCallsExp fun_id e a@(Var id s) = a 
-changeCallsExp fun_id e (Plus id e1 e2) = Plus id (changeCallsExp fun_id e e1) (changeCallsExp fun_id e e2)
-changeCallsExp fun_id e a@(Enum id i1 i2) = a
-changeCallsExp fun_id e a@(Case m alts) =
-     Case (changeCallsExp fun_id e m) (changeCallsAlts fun_id e alts)
-changeCallsExp _ _ e = error $ show e 
+changeCallsExp :: Id -> Id -> Exp -> Exp -> Exp 
+changeCallsExp un fun_id e a@(App id (Var id2 e1) e2) 
+  | fun_id == id2 = App id (App un (Var id2 e1 ) e) e2 
+  | otherwise = App id (Var id2 e1) (changeCallsExp un fun_id e e2)
+changeCallsExp un fun_id e a@(App id e1 e2) = App id (changeCallsExp un fun_id e e1) (changeCallsExp un fun_id e e2)
+changeCallsExp un fun_id e a@(Lit id i) = a 
+changeCallsExp un fun_id e a@(Var id s) = a 
+changeCallsExp un fun_id e (Plus id e1 e2) = Plus id (changeCallsExp un fun_id e e1) (changeCallsExp un fun_id e e2)
+changeCallsExp un fun_id e a@(Enum id i1 i2) = a
+changeCallsExp un fun_id e a@(Case m alts) =
+     Case (changeCallsExp un fun_id e m) (changeCallsAlts un fun_id e alts)
+changeCallsExp _ _ _ e = error $ show e 
 
-changeCallsAlts :: Id -> Exp -> [(Pat, Exp)] -> [(Pat, Exp)]
-changeCallsAlts _ _ [] = []
-changeCallsAlts fun_id e ((p,e1):rest)
-  = (p, changeCallsExp fun_id e e1):changeCallsAlts fun_id e rest
+changeCallsAlts :: Id -> Id -> Exp -> [(Pat, Exp)] -> [(Pat, Exp)]
+changeCallsAlts _ _ _ [] = []
+changeCallsAlts un fun_id e ((p,e1):rest)
+  = (p, changeCallsExp un fun_id e e1):changeCallsAlts un fun_id e rest
