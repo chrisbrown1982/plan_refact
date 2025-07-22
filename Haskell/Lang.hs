@@ -9,19 +9,19 @@ data Exp =
    | App Id Exp Exp 
    | Enum Id Int Int 
    | Case Exp [(Pat, Exp)]
-  deriving Show 
+  deriving (Read, Show) 
 
 data Decl = 
    Match Id [(Id, String, [Pat], Exp)]
-  deriving Show 
+  deriving (Read, Show) 
 
 data Pat = 
     Nil Id 
   | Cons Id Pat Pat 
   | PVar Id String 
- deriving Show 
+ deriving (Read, Show) 
 
-data Prog = Prog Id [(Id, Decl)] deriving Show 
+data Prog = Prog Id [(Id, Decl)] deriving (Read, Show) 
 
 pprintE :: Exp -> String 
 pprintE (Lit _ i) = show i 

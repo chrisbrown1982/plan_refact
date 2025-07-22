@@ -1,0 +1,1 @@
+Prog 1 [(2,Match 5 [(6,"sum",[Nil 66],Lit 7 0),(6,"sum",[Cons 61 (PVar 7 "h") (PVar 8 "t")],App 9 (App 10 (Var 11 "(+)") (Var 12 "h")) (App 13 (Var 6 "sum") (Var 8 "t")))]),(3,Match 14 [(15,"main",[],App 16 (Var 6 "sum") (Enum 17 1 4))])]
